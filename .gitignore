@@ -1,0 +1,11 @@
+# TypeScript builds
+dist
+
+# Node
+node_modules
+
+# Env
+.env
+
+# Google Credentials
+google-creds.json
