@@ -26,5 +26,7 @@ declare namespace NodeJS {
         ADMINJS_PASSWORD: string|undefined;
 
         SENTRY_API_KEY: string|undefined;
+
+        ADMINJS_LICENCE_KEY: string;
     }
 }
