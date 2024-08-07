@@ -116,25 +116,6 @@ export const syncServers = async () => {
     const serversIds: string[] = client.guilds.cache.map(guild => guild.id);
     const storedServers = await Postgres.getRepository(Server).find({});
 
-    for (const server of storedServers) {
-        const id = server.serverId;
-        if (!serversIds.includes(id)) {
-            Postgres.getRepository(Keyword).delete({
-                server: {
-                    serverId: id
-                }
-            });
-            Postgres.getRepository(WhitelistedEmoji).delete({
-                server: {
-                    serverId: id
-                }
-            });
-            Postgres.getRepository(Server).delete({ serverId: id });
-        } else {
-            Postgres.getRepository(Server).update({ serverId: id }, { name: client.guilds.cache.get(id)?.name });
-        }
-    }
-
     const newlyCreatedServerIds = serversIds.filter(id => !storedServers.map(server => server.serverId).includes(id));
 
     for (const id of newlyCreatedServerIds) {
