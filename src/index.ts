@@ -74,7 +74,7 @@ client.on('messageCreate', async (message) => {
 
     if (noneMatch) {
         message.delete().catch(() => {});
-        return message.author.send(`${message.author.username}, your message has been deleted. Every message in this channel has to start with one of these.\n\n${keywords.map(key => "- `" + key.text + "`").join(`\n`)}`);
+        return message.author.send(`${message.author.username}, your message has been deleted. Every message in the <#${message.channelId}> channel must start with one of these terms:\n\n${keywords.map(key => "- `" + key.text + "`").join(`\n`)}.\n\nOtherwise, the message will be removed.`);
     }
 
     if (!process.env.COMMAND_PREFIX) return;
