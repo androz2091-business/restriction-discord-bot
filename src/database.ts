@@ -28,18 +28,19 @@ export class Server extends BaseEntity {
 
     @Column({
         nullable: false,
-        unique: true
+        unique: true,
+        type: 'text'
     })
     serverId!: string;
 
     @Column()
     name!: string;
 
-    //@OneToMany(() => WhitelistedEmoji, emoji => emoji.server)
-    //whitelistedEmojis!: WhitelistedEmoji[];
+    @OneToMany(() => WhitelistedEmoji, emoji => emoji.server)
+    whitelistedEmojis!: WhitelistedEmoji[];
 
-    //@OneToMany(() => Keyword, keyword => keyword.server)
-    //keywords!: Keyword[];
+    @OneToMany(() => Keyword, keyword => keyword.server)
+    keywords!: Keyword[];
 
 }
 
@@ -54,13 +55,14 @@ export class WhitelistedEmoji extends BaseEntity {
     emojiUnicodeOrId!: string;
 
     @Column({
-        nullable: false
+        nullable: false,
+        type: 'text'
     })
     serverId!: string;
 
-    //@ManyToOne(() => Server, server => server.whitelistedEmojis)
-    //@JoinColumn({ name: "serverId", referencedColumnName: "serverId" })
-    //server!: Server;
+    @ManyToOne(() => Server, server => server.whitelistedEmojis)
+    @JoinColumn({ name: "serverId", referencedColumnName: "serverId" })
+    server!: Server;
 }
 
 @Entity()
@@ -84,13 +86,14 @@ export class Keyword extends BaseEntity {
     channelId!: string;
 
     @Column({
-        nullable: false
+        nullable: false,
+        type: 'text'
     })
     serverId!: string;
 
-    //@ManyToOne(() => Server, server => server.keywords)
-    //@JoinColumn({ name: "serverId" })
-    //server!: Server;
+    @ManyToOne(() => Server, server => server.keywords)
+    @JoinColumn({ name: "serverId", referencedColumnName: "serverId" })
+    server!: Server;
 }
 
 const entities = [Server, WhitelistedEmoji, Keyword];
@@ -102,7 +105,7 @@ export const Postgres = new DataSource({
     username: process.env.DB_USERNAME,
     password: process.env.DB_PASSWORD,
     entities,
-    synchronize: process.env.ENVIRONMENT === 'development',
+    //synchronize: process.env.ENVIRONMENT === 'development',
 });
 
 export const initialize = () => Postgres.initialize().then(async () => {
