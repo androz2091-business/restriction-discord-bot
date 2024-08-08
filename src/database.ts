@@ -35,11 +35,11 @@ export class Server extends BaseEntity {
     @Column()
     name!: string;
 
-    @OneToMany(() => WhitelistedEmoji, emoji => emoji.server)
-    whitelistedEmojis!: WhitelistedEmoji[];
+    //@OneToMany(() => WhitelistedEmoji, emoji => emoji.server)
+    //whitelistedEmojis!: WhitelistedEmoji[];
 
-    @OneToMany(() => Keyword, keyword => keyword.server)
-    keywords!: Keyword[];
+    //@OneToMany(() => Keyword, keyword => keyword.server)
+    //keywords!: Keyword[];
 
 }
 
@@ -58,9 +58,9 @@ export class WhitelistedEmoji extends BaseEntity {
     })
     serverId!: string;
 
-    @ManyToOne(() => Server, server => server.whitelistedEmojis)
-    @JoinColumn({ name: "serverId", referencedColumnName: "serverId" })
-    server!: Server;
+    //@ManyToOne(() => Server, server => server.whitelistedEmojis)
+    //@JoinColumn({ name: "serverId", referencedColumnName: "serverId" })
+    //server!: Server;
 }
 
 @Entity()
@@ -88,9 +88,9 @@ export class Keyword extends BaseEntity {
     })
     serverId!: string;
 
-    @ManyToOne(() => Server, server => server.keywords)
-    @JoinColumn({ name: "serverId", referencedColumnName: "serverId" })
-    server!: Server;
+    //@ManyToOne(() => Server, server => server.keywords)
+    //@JoinColumn({ name: "serverId" })
+    //server!: Server;
 }
 
 const entities = [Server, WhitelistedEmoji, Keyword];

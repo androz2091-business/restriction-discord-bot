@@ -137,9 +137,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
 
     const whitelistedEmojis = await Postgres.getRepository(WhitelistedEmoji).find({
         where: {
-            server: {
-                serverId: reaction.message.guildId
-            }
+            serverId: reaction.message.guildId
         }
     });
 
