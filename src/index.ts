@@ -135,14 +135,11 @@ client.on('guildDelete', () => syncServers());
 client.on('messageReactionAdd', async (reaction, user) => {
     if (!reaction.message.guildId) return;
 
-    const whitelistedEmojis = await Postgres.getRepository(WhitelistedEmoji).find({
-        relations: ['server'],
-        where: {
-            server: {
-                serverId: reaction.message.guildId
-            }
-        }
+    const rawWhitelistedEmojis = await Postgres.getRepository(WhitelistedEmoji).find({
+        relations: ['server']
     });
+
+    const whitelistedEmojis = rawWhitelistedEmojis.filter(e => e.server.serverId === reaction.message.guildId);
 
     const emoji = reaction.emoji.id ? `<:${reaction.emoji.name}:${reaction.emoji.id}>` : reaction.emoji.name;
 

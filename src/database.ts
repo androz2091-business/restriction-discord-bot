@@ -61,7 +61,7 @@ export class WhitelistedEmoji extends BaseEntity {
     serverId!: string;
 
     @ManyToOne(() => Server, server => server.whitelistedEmojis)
-    @JoinColumn({ name: "serverId", referencedColumnName: "serverId" })
+    @JoinColumn({ name: "serverId" })
     server!: Server;
 }
 
@@ -92,7 +92,7 @@ export class Keyword extends BaseEntity {
     serverId!: string;
 
     @ManyToOne(() => Server, server => server.keywords)
-    @JoinColumn({ name: "serverId", referencedColumnName: "serverId" })
+    @JoinColumn({ name: "serverId" })
     server!: Server;
 }
 
