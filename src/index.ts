@@ -150,8 +150,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
     if (!whitelistedEmojis.find(e => e.emojiUnicodeOrId === emoji)) {
         // @ts-ignore
         reaction.users.remove(user);
-
-        user.send(`${user.username}, you reacted with an emoji that is not allowed in this server. Every reaction in this server has to be one of these.\n\n${whitelistedEmojis.map(e => "- " + e.emojiUnicodeOrId).join(`\n`)}`);
+        //user.send(`${user.username}, you reacted with an emoji that is not allowed in this server. Every reaction in this server has to be one of these.\n\n${whitelistedEmojis.map(e => "- " + e.emojiUnicodeOrId).join(`\n`)}`);
     }
 
 });
