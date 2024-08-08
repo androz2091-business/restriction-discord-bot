@@ -136,6 +136,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
     if (!reaction.message.guildId) return;
 
     const whitelistedEmojis = await Postgres.getRepository(WhitelistedEmoji).find({
+        relations: ['server'],
         where: {
             server: {
                 serverId: reaction.message.guildId
