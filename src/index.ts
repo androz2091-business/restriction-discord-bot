@@ -157,4 +157,4 @@ client.login(process.env.DISCORD_CLIENT_TOKEN);
 
 setInterval(() => {
     syncServers();
-}, 1000 * 60);
+}, 1000 * 60 * 60);
