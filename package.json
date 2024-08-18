@@ -21,7 +21,7 @@
     "@sentry/tracing": "^7.114.0",
     "adminjs": "^7.8.8",
     "class-validator": "^0.13.2",
-    "cron": "^2.4.4",
+    "cron": "^3.1.7",
     "date-format-parse": "^0.2.7",
     "discord-api-types": "^0.37.93",
     "discord.js": "^14.15.3",

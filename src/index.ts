@@ -14,14 +14,15 @@ declare global {
 
 import './sentry.js';
 
-import { Keyword, Postgres, Server, WhitelistedEmoji, initialize as initializeDatabase } from './database.js';
+import { Keyword, Postgres, RecurringMessage, RecurringMessageTask, Server, WhitelistedEmoji, initialize as initializeDatabase } from './database.js';
 import { loadContextMenus, loadMessageCommands, loadSlashCommands, synchronizeSlashCommands } from './handlers/commands.js';
 
 import { syncSheets } from './integrations/sheets.js';
 
-import { Client, IntentsBitField } from 'discord.js';
+import { Client, ColorResolvable, EmbedBuilder, IntentsBitField, TextChannel } from 'discord.js';
 import { loadTasks } from './handlers/tasks.js';
 import { In } from 'typeorm';
+import { CronJob } from 'cron';
 export const client = new Client({
     intents: [
         IntentsBitField.Flags.Guilds,
@@ -111,6 +112,13 @@ client.on('ready', async () => {
 
 });
 
+interface RecurringMessageTaskCronJob {
+    cronJob: CronJob;
+    taskId: number;
+}
+
+let cronJobs: RecurringMessageTaskCronJob[] = [];
+
 export const syncServers = async () => {
     // delete all the servers that are not part of the bot anymore
     const serversIds: string[] = client.guilds.cache.map(guild => guild.id);
@@ -122,12 +130,76 @@ export const syncServers = async () => {
         Postgres.getRepository(Server).insert({ serverId: id, name: client.guilds.cache.get(id)?.name });
     }
 
+    syncCronJobs();
+
     client.channels.cache.forEach(channel => {
         if (channel.isTextBased()) {
             channel.messages.fetch({ limit: 100, cache: true }).then(() => console.log(`Fetched messages for ${(channel as any)?.name}`));
         }
     });
 }
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+export async function syncCronJobs () {
+
+    // db has to be updated
+    await sleep(2000);
+
+    cronJobs.forEach(job => job.cronJob.stop());
+    cronJobs = [];
+
+    const activeRecurringMessageTask = await Postgres.getRepository(RecurringMessageTask).find({});
+
+    for (const task of activeRecurringMessageTask) {
+
+        const cronTab = '0 {min} {hour} * * {day}';
+
+        const cronTabString = cronTab
+            .replace('{min}', task.utcTimeMinute)
+            .replace('{hour}', task.utcTimeHour)
+            .replace('{day}', task.dayOfWeek);
+
+        console.log(`Scheduling cron job for task ${task.id} with cron tab ${cronTabString}`);
+
+        cronJobs.push({
+            taskId: task.recurringMessageId,
+            cronJob: CronJob.from({
+                cronTime: cronTabString,
+                onTick: async function () {
+                    
+                    // todo check channel id
+
+                    const recurringMessage = (await Postgres.getRepository(RecurringMessage).findOne({
+                        where: {
+                            id: task.recurringMessageId
+                        }
+                    }))!;
+
+                    const channel = (await client.channels.fetch(recurringMessage.channelId)) as TextChannel;
+                    if (recurringMessage.sendAsEmbed) {
+                        channel.send({
+                            embeds: [
+                                new EmbedBuilder()
+                                    .setDescription(recurringMessage.text)
+                                    .setColor(recurringMessage.embedColor as ColorResolvable)
+                            ]
+                        });
+                        return;
+                    } else {
+                        channel.send(recurringMessage.text);
+                    }
+
+                },
+                start: true,
+                timeZone: 'utc'
+            })
+        });
+    }
+
+    console.log(`Scheduled ${cronJobs.length} cron jobs`);
+}
+
 
 client.on('guildCreate', () => syncServers());
 client.on('guildDelete', () => syncServers());
@@ -158,3 +230,7 @@ client.login(process.env.DISCORD_CLIENT_TOKEN);
 setInterval(() => {
     syncServers();
 }, 1000 * 60 * 60);
+
+setInterval(() => {
+    syncCronJobs();
+}, 1000 * 60);

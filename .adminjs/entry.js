@@ -1,7 +1,7 @@
 AdminJS.UserComponents = {}
-import RelationsShowPropertyComponent from '../node_modules/.pnpm/@adminjs+relations@1.1.2_adminjs@7.8.8/node_modules/@adminjs/relations/lib/components/RelationsShowPropertyComponent'
+import RelationsShowPropertyComponent from '../node_modules/@adminjs/relations/lib/components/RelationsShowPropertyComponent'
 AdminJS.UserComponents.RelationsShowPropertyComponent = RelationsShowPropertyComponent
-import RelationsEditPropertyComponent from '../node_modules/.pnpm/@adminjs+relations@1.1.2_adminjs@7.8.8/node_modules/@adminjs/relations/lib/components/RelationsEditPropertyComponent'
+import RelationsEditPropertyComponent from '../node_modules/@adminjs/relations/lib/components/RelationsEditPropertyComponent'
 AdminJS.UserComponents.RelationsEditPropertyComponent = RelationsEditPropertyComponent
-import RelationsListPropertyComponent from '../node_modules/.pnpm/@adminjs+relations@1.1.2_adminjs@7.8.8/node_modules/@adminjs/relations/lib/components/RelationsListPropertyComponent'
+import RelationsListPropertyComponent from '../node_modules/@adminjs/relations/lib/components/RelationsListPropertyComponent'
 AdminJS.UserComponents.RelationsListPropertyComponent = RelationsListPropertyComponent

@@ -1,4 +1,4 @@
-import { Entity, Column, DataSource, PrimaryGeneratedColumn, BaseEntity, ManyToOne, JoinColumn, OneToMany } from "typeorm";
+import { Entity, Column, DataSource, PrimaryGeneratedColumn, BaseEntity, ManyToOne, JoinColumn, OneToMany, BeforeRemove, AfterRemove, AfterInsert, AfterUpdate } from "typeorm";
 import { Database, Resource } from '@adminjs/typeorm';
 import { validate } from 'class-validator';
 import { RelationType, owningRelationSettingsFeature } from '@adminjs/relations';
@@ -13,7 +13,7 @@ import { join } from "path";
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { features } from "process";
-import { client, syncServers } from "./index.js";
+import { client, syncCronJobs, syncServers } from "./index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -42,6 +42,8 @@ export class Server extends BaseEntity {
     @OneToMany(() => Keyword, keyword => keyword.server)
     keywords!: Keyword[];
 
+    @OneToMany(() => RecurringMessage, message => message.server)
+    recurringMessages!: RecurringMessage[];
 }
 
 @Entity()
@@ -96,7 +98,94 @@ export class Keyword extends BaseEntity {
     server!: Server;
 }
 
-const entities = [Server, WhitelistedEmoji, Keyword];
+@Entity()
+export class RecurringMessage extends BaseEntity {
+    @PrimaryGeneratedColumn()
+    id!: number;
+
+    @Column({
+        nullable: false
+    })
+    serverId!: string;
+
+    @Column({
+        nullable: false
+    })
+    channelId!: string;
+
+    @Column({
+        nullable: false
+    })
+    text!: string;
+
+    @Column({
+        nullable: false,
+        default: false
+    })
+    sendAsEmbed!: boolean;
+
+    @Column({
+        nullable: true,
+        default: '#f7981d'
+    })
+    embedColor!: string;
+
+    @OneToMany(() => RecurringMessageTask, task => task.recurringMessage)
+    tasks!: RecurringMessageTask[];
+
+    @ManyToOne(() => Server, server => server.recurringMessages)
+    @JoinColumn({ name: "serverId" })
+    server!: Server;
+    
+}
+
+@Entity()
+export class RecurringMessageTask extends BaseEntity {
+
+    @AfterRemove()
+    async afterRemove() {
+        syncCronJobs();
+    }
+
+    @AfterInsert()
+    async afterInsert() {
+        syncCronJobs();
+    }
+
+    @AfterUpdate()
+    async afterUpdate() {
+        syncCronJobs();
+    }
+
+    @PrimaryGeneratedColumn()
+    id!: number;
+    
+    @Column({
+        nullable: false
+    })
+    recurringMessageId!: number;
+
+    @Column({
+        nullable: false
+    })
+    dayOfWeek!: string;
+
+    @Column({
+        nullable: false
+    })
+    utcTimeHour!: string;
+
+    @Column({
+        nullable: false
+    })
+    utcTimeMinute!: string;
+
+    @ManyToOne(() => RecurringMessage, message => message.tasks)
+    @JoinColumn({ name: "recurringMessageId" })
+    recurringMessage!: RecurringMessage;
+}
+
+const entities = [Server, WhitelistedEmoji, Keyword, RecurringMessage, RecurringMessageTask];
 
 export const Postgres = new DataSource({
     type: 'postgres',
@@ -105,7 +194,7 @@ export const Postgres = new DataSource({
     username: process.env.DB_USERNAME,
     password: process.env.DB_PASSWORD,
     entities,
-    //synchronize: process.env.ENVIRONMENT === 'development',
+    synchronize: true
 });
 
 export const initialize = () => Postgres.initialize().then(async () => {
@@ -114,6 +203,31 @@ export const initialize = () => Postgres.initialize().then(async () => {
 
         function getOptions(entity: typeof BaseEntity): ResourceOptions {
             switch (entity) {
+                case RecurringMessage:
+                    return {}
+                case RecurringMessageTask:
+                    return {
+                        properties: {
+                            dayOfWeek: {
+                                availableValues: [
+                                    { value: '*', label: 'Every day' },
+                                    { value: 'SUN', label: 'Sunday' },
+                                    { value: 'MON', label: 'Monday' },
+                                    { value: 'TUE', label: 'Tuesday' },
+                                    { value: 'WED', label: 'Wednesday' },
+                                    { value: 'THU', label: 'Thursday' },
+                                    { value: 'FRI', label: 'Friday' },
+                                    { value: 'SAT', label: 'Saturday' },
+                                ]
+                            },
+                            utcTimeHour: {
+                                availableValues: Array.from({ length: 24 }, (_, i) => ({ value: i.toString(), label: i.toString() }))
+                            },
+                            utcTimeMinute: {
+                                availableValues: Array.from({ length: 60 }, (_, i) => ({ value: i.toString(), label: i.toString() }))
+                            }
+                        }
+                    }
                 case Server:
                     return {
                         actions: {
@@ -184,6 +298,13 @@ export const initialize = () => Postgres.initialize().then(async () => {
                                 target: {
                                     joinKey: 'serverId',
                                     resourceId: 'Keyword',
+                                },
+                            },
+                            RecurringMessages: {
+                                type: RelationType.OneToMany,
+                                target: {
+                                    joinKey: 'serverId',
+                                    resourceId: 'RecurringMessage',
                                 },
                             },
                         }
