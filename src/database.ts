@@ -204,7 +204,16 @@ export const initialize = () => Postgres.initialize().then(async () => {
         function getOptions(entity: typeof BaseEntity): ResourceOptions {
             switch (entity) {
                 case RecurringMessage:
-                    return {}
+                    return {
+                        properties: {
+                            text: {
+                                type: 'textarea',
+                                props: {
+                                    rows: 20,
+                                }
+                            }
+                        }
+                    }
                 case RecurringMessageTask:
                     return {
                         properties: {
