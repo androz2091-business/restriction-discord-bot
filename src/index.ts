@@ -14,12 +14,12 @@ declare global {
 
 import './sentry.js';
 
-import { Keyword, Postgres, RecurringMessage, RecurringMessageTask, Server, WhitelistedEmoji, initialize as initializeDatabase } from './database.js';
+import { Keyword, Postgres, RecurringMessage, RecurringMessageTask, Server, WhitelistedEmoji, WhitelistedStaffRole, initialize as initializeDatabase } from './database.js';
 import { loadContextMenus, loadMessageCommands, loadSlashCommands, synchronizeSlashCommands } from './handlers/commands.js';
 
 import { syncSheets } from './integrations/sheets.js';
 
-import { Client, ColorResolvable, EmbedBuilder, IntentsBitField, TextChannel } from 'discord.js';
+import { Client, ColorResolvable, EmbedBuilder, GuildMember, IntentsBitField, TextChannel } from 'discord.js';
 import { loadTasks } from './handlers/tasks.js';
 import { In } from 'typeorm';
 import { CronJob } from 'cron';
@@ -62,7 +62,7 @@ client.on('interactionCreate', async (interaction) => {
 
 client.on('messageCreate', async (message) => {
 
-    if (message.author.bot) return;
+    if (message.author.bot || !message.guildId) return;
 
     const keywords = await Postgres.getRepository(Keyword).find({
         where: {
@@ -71,12 +71,24 @@ client.on('messageCreate', async (message) => {
         }
     });
 
-    const noneMatch = keywords.length > 0 && keywords.every(key => !message.content.startsWith(key.text));
+    const whitelistedRoles = await Postgres.getRepository(WhitelistedStaffRole).find({
+        where: {
+            serverId: message.guildId!
+        }
+    });
+    // check if the user has a whitelisted role
+    if (whitelistedRoles) {
+        const hasRole = (message.member as GuildMember).roles.cache.some(role => whitelistedRoles.map(r => r.roleId).includes(role.id));
+        if (!hasRole) {
+            const noneMatch = keywords.length > 0 && keywords.every(key => !message.content.startsWith(key.text));
 
-    if (noneMatch) {
-        message.delete().catch(() => {});
-        return message.author.send(`${message.author.username}, your message has been deleted. Every message in the <#${message.channelId}> channel must start with one of these terms:\n\n${keywords.map(key => "- `" + key.text + "`").join(`\n`)}.\n\nOtherwise, the message will be removed.`);
+            if (noneMatch) {
+                message.delete().catch(() => {});
+                return message.author.send(`${message.author.username}, your message has been deleted. Every message in the <#${message.channelId}> channel must start with one of these terms:\n\n${keywords.map(key => "- `" + key.text + "`").join(`\n`)}.\n\nOtherwise, the message will be removed.`);
+            }
+        }
     }
+
 
     if (!process.env.COMMAND_PREFIX) return;
     
