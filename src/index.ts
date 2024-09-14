@@ -71,11 +71,7 @@ client.on('messageCreate', async (message) => {
         }
     });
 
-    const whitelistedRoles = await Postgres.getRepository(WhitelistedStaffRole).find({
-        where: {
-            serverId: message.guildId!
-        }
-    });
+    const whitelistedRoles = await Postgres.getRepository(WhitelistedStaffRole).find({});
     // check if the user has a whitelisted role
     if (whitelistedRoles) {
         const hasRole = (message.member as GuildMember).roles.cache.some(role => whitelistedRoles.map(r => r.roleId).includes(role.id));
