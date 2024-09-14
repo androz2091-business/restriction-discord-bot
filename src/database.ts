@@ -22,27 +22,6 @@ Resource.validate = validate;
 AdminJS.registerAdapter({ Database, Resource });
 
 @Entity()
-export class WhitelistedStaffRole extends BaseEntity {
-    @PrimaryGeneratedColumn()
-    id!: number;
-
-    @Column({
-        nullable: false
-    })
-    roleId!: string;
-
-    @Column({
-        nullable: false,
-        type: 'text'
-    })
-    serverId!: string;
-
-    @ManyToOne(() => Server, server => server.whitelistedStaffRoles)
-    @JoinColumn({ name: "serverId" })
-    server!: Server;
-}
-
-@Entity()
 export class Server extends BaseEntity {
     @PrimaryGeneratedColumn()
     id!: number;
@@ -68,6 +47,27 @@ export class Server extends BaseEntity {
 
     @OneToMany(() => WhitelistedStaffRole, role => role.server)
     whitelistedStaffRoles!: WhitelistedStaffRole[];
+}
+
+@Entity()
+export class WhitelistedStaffRole extends BaseEntity {
+    @PrimaryGeneratedColumn()
+    id!: number;
+
+    @Column({
+        nullable: false
+    })
+    roleId!: string;
+
+    @Column({
+        nullable: false,
+        type: 'text'
+    })
+    serverId!: string;
+
+    @ManyToOne(() => Server, server => server.whitelistedStaffRoles)
+    @JoinColumn({ name: "serverId" })
+    server!: Server;
 }
 
 @Entity()
