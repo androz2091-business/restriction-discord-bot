@@ -1,7 +1,7 @@
 import { config } from "dotenv";
 config();
 
-import { initialize as initializeDatabase, getPostgres, RecurringMessageTask, WhitelistedEmoji, Server, WhitelistedStaffRole, Keyword, RecurringMessage } from "./database.js";
+import { initialize as initializeDatabase, getPostgres, RecurringMessageTask, WhitelistedEmoji, Server, WhitelistedStaffRole, Keyword, RecurringMessage, BlacklistedEmoji } from "./database.js";
 import { loadContextMenus, loadMessageCommands, loadSlashCommands, synchronizeSlashCommands } from "./handlers/commands.js";
 
 import { syncSheets } from "./integrations/sheets.js";
@@ -205,7 +205,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
     const emoji = reaction.emoji.id ? `<:${reaction.emoji.name}:${reaction.emoji.id}>` : reaction.emoji.name;
 
     if (server?.blacklistModeEnabled) {
-        const rawBlacklistedEmojis = await (await getPostgres).getRepository(WhitelistedEmoji).find({
+        const rawBlacklistedEmojis = await (await getPostgres).getRepository(BlacklistedEmoji).find({
             relations: ['server']
         });
         const blacklistedEmojis = rawBlacklistedEmojis.filter(e => e.server.serverId === reaction.message.guildId);
