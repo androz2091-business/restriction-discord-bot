@@ -10,7 +10,7 @@ import { Client, ColorResolvable, EmbedBuilder, GuildMember, IntentsBitField, Te
 import { loadTasks } from "./handlers/tasks.js";
 import { CronJob } from "cron";
 export const client = new Client({
-	intents: [IntentsBitField.Flags.Guilds, IntentsBitField.Flags.GuildMessages],
+	intents: [IntentsBitField.Flags.Guilds, IntentsBitField.Flags.GuildMessages, IntentsBitField.Flags.GuildMessageReactions],
 });
 
 const { slashCommands, slashCommandsData } = await loadSlashCommands(client);
@@ -193,6 +193,7 @@ client.on('guildCreate', () => syncServers());
 client.on('guildDelete', () => syncServers());
 
 client.on('messageReactionAdd', async (reaction, user) => {
+    console.log(`Reaction added by ${user.username} in ${reaction.message.guildId}: ${reaction.emoji.name}`);
     if (!reaction.message.guildId) return;
 
     const server = await (await getPostgres).getRepository(Server).findOne({
@@ -203,6 +204,9 @@ client.on('messageReactionAdd', async (reaction, user) => {
 
 
     const emoji = reaction.emoji.id ? `<:${reaction.emoji.name}:${reaction.emoji.id}>` : reaction.emoji.name;
+
+
+    console.log(`Server blacklist mode: ${server?.blacklistModeEnabled}`);
 
     if (server?.blacklistModeEnabled) {
         const rawBlacklistedEmojis = await (await getPostgres).getRepository(BlacklistedEmoji).find({
