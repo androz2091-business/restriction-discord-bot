@@ -1,3 +1,4 @@
+import { TextChannel } from "discord.js";
 import { MessageCommandRunFunction } from "../handlers/commands.js";
 
 export const commands = [
@@ -6,6 +7,6 @@ export const commands = [
 
 export const run: MessageCommandRunFunction = async (message) => {
 
-    message.channel.send(`🏓 Pong! My latency is currently \`${message.client.ws.ping}ms\`.`);
+    (message.channel as TextChannel).send(`🏓 Pong! My latency is currently \`${message.client.ws.ping}ms\`.`);
     
 }

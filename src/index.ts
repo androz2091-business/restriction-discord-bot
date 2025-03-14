@@ -1,47 +1,27 @@
-import 'dotenv/config';
+import { config } from "dotenv";
+config();
 
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { initialize as initializeDatabase, getPostgres, RecurringMessageTask, WhitelistedEmoji, Server, WhitelistedStaffRole, Keyword, RecurringMessage } from "./database.js";
+import { loadContextMenus, loadMessageCommands, loadSlashCommands, synchronizeSlashCommands } from "./handlers/commands.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { syncSheets } from "./integrations/sheets.js";
 
-global.__rootdir__ = __dirname || process.cwd();
-global.__rootdir__ = __dirname || process.cwd();
-declare global {
-    var __rootdir__: string;
-}
-
-import './sentry.js';
-
-import { Keyword, Postgres, RecurringMessage, RecurringMessageTask, Server, WhitelistedEmoji, WhitelistedStaffRole, initialize as initializeDatabase } from './database.js';
-import { loadContextMenus, loadMessageCommands, loadSlashCommands, synchronizeSlashCommands } from './handlers/commands.js';
-
-import { syncSheets } from './integrations/sheets.js';
-
-import { Client, ColorResolvable, EmbedBuilder, GuildMember, IntentsBitField, TextChannel } from 'discord.js';
-import { loadTasks } from './handlers/tasks.js';
-import { In } from 'typeorm';
-import { CronJob } from 'cron';
+import { Client, ColorResolvable, EmbedBuilder, GuildMember, IntentsBitField, TextChannel } from "discord.js";
+import { loadTasks } from "./handlers/tasks.js";
+import { CronJob } from "cron";
 export const client = new Client({
-    intents: [
-        IntentsBitField.Flags.Guilds,
-        IntentsBitField.Flags.GuildMessages,
-        IntentsBitField.Flags.GuildMessageReactions,
-        IntentsBitField.Flags.MessageContent
-    ]
+	intents: [IntentsBitField.Flags.Guilds, IntentsBitField.Flags.GuildMessages],
 });
 
-const { slashCommands, slashCommandsData } = loadSlashCommands(client);
-const { contextMenus, contextMenusData } = loadContextMenus(client);
+const { slashCommands, slashCommandsData } = await loadSlashCommands(client);
+const { contextMenus, contextMenusData } = await loadContextMenus(client);
 const messageCommands = loadMessageCommands(client);
 loadTasks(client);
 
 synchronizeSlashCommands(client, [...slashCommandsData, ...contextMenusData], {
-    debug: true,
-    guildId: process.env.GUILD_ID
+	debug: true,
+	guildId: process.env.GUILD_ID,
 });
-
 client.on('interactionCreate', async (interaction) => {
 
     if (interaction.isCommand()) {
@@ -64,14 +44,14 @@ client.on('messageCreate', async (message) => {
 
     if (message.author.bot || !message.guildId) return;
 
-    const keywords = await Postgres.getRepository(Keyword).find({
+    const keywords = await (await getPostgres).getRepository(Keyword).find({
         where: {
             channelId: message.channelId,
             kind: 'startswith'
         }
     });
 
-    const whitelistedRoles = await Postgres.getRepository(WhitelistedStaffRole).find({});
+    const whitelistedRoles = await (await getPostgres).getRepository(WhitelistedStaffRole).find({});
     // check if the user has a whitelisted role
     if (whitelistedRoles) {
         const hasRole = (message.member as GuildMember).roles.cache.some(role => whitelistedRoles.map(r => r.roleId).includes(role.id));
@@ -93,11 +73,11 @@ client.on('messageCreate', async (message) => {
 
     if (!commandName) return;
 
-    const run = messageCommands.get(commandName);
-    
-    if (!run) return;
+    const run = (await messageCommands).get(commandName);
 
-    run(message, commandName);
+	if (!run) return;
+
+	run(message, commandName);
 
 });
 
@@ -130,12 +110,12 @@ let cronJobs: RecurringMessageTaskCronJob[] = [];
 export const syncServers = async () => {
     // delete all the servers that are not part of the bot anymore
     const serversIds: string[] = client.guilds.cache.map(guild => guild.id);
-    const storedServers = await Postgres.getRepository(Server).find({});
+    const storedServers = await (await getPostgres).getRepository(Server).find({});
 
     const newlyCreatedServerIds = serversIds.filter(id => !storedServers.map(server => server.serverId).includes(id));
 
     for (const id of newlyCreatedServerIds) {
-        Postgres.getRepository(Server).insert({ serverId: id, name: client.guilds.cache.get(id)?.name });
+        await (await getPostgres).getRepository(Server).insert({ serverId: id, name: client.guilds.cache.get(id)?.name });
     }
 
     syncCronJobs();
@@ -157,7 +137,7 @@ export async function syncCronJobs () {
     cronJobs.forEach(job => job.cronJob.stop());
     cronJobs = [];
 
-    const activeRecurringMessageTask = await Postgres.getRepository(RecurringMessageTask).find({});
+    const activeRecurringMessageTask = await (await getPostgres).getRepository(RecurringMessageTask).find({});
 
     for (const task of activeRecurringMessageTask) {
 
@@ -178,7 +158,7 @@ export async function syncCronJobs () {
                     
                     // todo check channel id
 
-                    const recurringMessage = (await Postgres.getRepository(RecurringMessage).findOne({
+                    const recurringMessage = (await (await getPostgres).getRepository(RecurringMessage).findOne({
                         where: {
                             id: task.recurringMessageId
                         }
@@ -215,21 +195,44 @@ client.on('guildDelete', () => syncServers());
 client.on('messageReactionAdd', async (reaction, user) => {
     if (!reaction.message.guildId) return;
 
-    const rawWhitelistedEmojis = await Postgres.getRepository(WhitelistedEmoji).find({
-        relations: ['server']
+    const server = await (await getPostgres).getRepository(Server).findOne({
+        where: {
+            serverId: reaction.message.guildId
+        }
     });
 
-    const whitelistedEmojis = rawWhitelistedEmojis.filter(e => e.server.serverId === reaction.message.guildId);
 
     const emoji = reaction.emoji.id ? `<:${reaction.emoji.name}:${reaction.emoji.id}>` : reaction.emoji.name;
 
-    console.log(whitelistedEmojis.map(e => e.emojiUnicodeOrId), emoji);
+    if (server?.blacklistModeEnabled) {
+        const rawBlacklistedEmojis = await (await getPostgres).getRepository(WhitelistedEmoji).find({
+            relations: ['server']
+        });
+        const blacklistedEmojis = rawBlacklistedEmojis.filter(e => e.server.serverId === reaction.message.guildId);
 
-    if (!whitelistedEmojis.find(e => e.emojiUnicodeOrId === emoji)) {
-        // @ts-ignore
-        reaction.users.remove(user);
-        //user.send(`${user.username}, you reacted with an emoji that is not allowed in this server. Every reaction in this server has to be one of these.\n\n${whitelistedEmojis.map(e => "- " + e.emojiUnicodeOrId).join(`\n`)}`);
+        if (blacklistedEmojis.find(e => e.emojiUnicodeOrId === emoji)) {
+            // @ts-ignore
+            reaction.users.remove(user);
+            //user.send(`${user.username}, you reacted with an emoji that is not allowed in this server. Every reaction in this server has to be one of these.\n\n${blacklistedEmojis.map(e => "- " + e.emojiUnicodeOrId).join(`\n`)}`);
+        }
+
+    } else {
+        const rawWhitelistedEmojis = await (await getPostgres).getRepository(WhitelistedEmoji).find({
+            relations: ['server']
+        });
+
+        const whitelistedEmojis = rawWhitelistedEmojis.filter(e => e.server.serverId === reaction.message.guildId);
+
+
+        console.log(whitelistedEmojis.map(e => e.emojiUnicodeOrId), emoji);
+
+        if (!whitelistedEmojis.find(e => e.emojiUnicodeOrId === emoji)) {
+            // @ts-ignore
+            reaction.users.remove(user);
+            //user.send(`${user.username}, you reacted with an emoji that is not allowed in this server. Every reaction in this server has to be one of these.\n\n${whitelistedEmojis.map(e => "- " + e.emojiUnicodeOrId).join(`\n`)}`);
+        }
     }
+
 
 });
 
